@@ -6,7 +6,7 @@ import { Badge } from './components/ui/badge'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from './components/ui/dialog'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './components/ui/tabs'
 import { Users, Star, Settings, Crown, Sparkles } from 'lucide-react'
-import { AvatarCustomizer } from './components/AvatarCustomizer'
+import { AvatarCustomizer, AvatarConfig } from './components/AvatarCustomizer'
 import { ClassGallery } from './components/ClassGallery'
 import { PointsManager } from './components/PointsManager'
 import toast from 'react-hot-toast'
@@ -20,14 +20,23 @@ interface User {
   avatarConfig?: string
 }
 
+// Local storage helpers
+const STORAGE_KEY = 'class-avatar-users'
+
+function saveUsersToStorage(users: User[]) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(users))
+}
+
+function loadUsersFromStorage(): User[] {
+  const stored = localStorage.getItem(STORAGE_KEY)
+  return stored ? JSON.parse(stored) : []
+}
+
 function App() {
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
-  const [users, setUsers] = useState<User[]>([])
-  const [classSettings] = useState({
-    className: 'My Awesome Class',
-    teacherId: ''
-  })
+  const [users, setUsers] = useState<User[]>(mockUsers)
+  const [className, setClassName] = useState('My Awesome Class')
 
   useEffect(() => {
     const unsubscribe = blink.auth.onAuthStateChanged((state) => {
@@ -37,20 +46,21 @@ function App() {
       setLoading(state.isLoading)
     })
     return unsubscribe
-  }, [])
+  }, [users])
 
   const initializeUser = async (authUser: { id: string; email: string; displayName?: string }) => {
     try {
-      // Check if user exists in our database
-      const existingUsers = await blink.db.users.list({
-        where: { email: authUser.email }
-      })
+      // Load users from local storage
+      const storedUsers = loadUsersFromStorage()
+      
+      // Check if user exists in local storage
+      const existingUser = storedUsers.find(u => u.email === authUser.email)
 
-      if (existingUsers.length > 0) {
-        setUser(existingUsers[0])
+      if (existingUser) {
+        setUser(existingUser)
       } else {
         // Create new user profile
-        const newUser = await blink.db.users.create({
+        const newUser: User = {
           id: authUser.id,
           email: authUser.email,
           displayName: authUser.displayName || authUser.email.split('@')[0],
@@ -65,58 +75,53 @@ function App() {
             outfit: 'casual',
             outfitColor: '#FF6B6B',
             accessory: 'none'
-          }),
-          createdAt: new Date().toISOString()
-        })
+          })
+        }
+        
+        const updatedUsers = [...storedUsers, newUser]
+        saveUsersToStorage(updatedUsers)
         setUser(newUser)
       }
       
       // Load all users for gallery
       loadAllUsers()
+      
+      toast.success('Welcome to the class!')
     } catch (error) {
       console.error('Error initializing user:', error)
       toast.error('Failed to initialize user profile')
     }
   }
 
-  const loadAllUsers = async () => {
-    try {
-      const allUsers = await blink.db.users.list({
-        orderBy: { points: 'desc' }
-      })
-      setUsers(allUsers)
-    } catch (error) {
-      console.error('Error loading users:', error)
-    }
+  const loadAllUsers = () => {
+    const storedUsers = loadUsersFromStorage()
+    const sortedUsers = storedUsers.sort((a, b) => b.points - a.points)
+    setUsers(sortedUsers)
   }
 
-  const updateUserAvatar = async (avatarConfig: Record<string, string>) => {
+  const updateUserAvatar = (avatarConfig: AvatarConfig) => {
     if (!user) return
-    
-    try {
-      await blink.db.users.update(user.id, {
-        avatarConfig: JSON.stringify(avatarConfig)
-      })
-      setUser({ ...user, avatarConfig: JSON.stringify(avatarConfig) })
-      toast.success('Avatar updated successfully!')
-      loadAllUsers()
-    } catch (error) {
-      console.error('Error updating avatar:', error)
-      toast.error('Failed to update avatar')
-    }
+    setUser({ ...user, avatarConfig: JSON.stringify(avatarConfig) })
+    toast.success('Avatar updated successfully!')
+    loadAllUsers()
   }
 
   const updateUserPoints = async (userId: string, pointsChange: number) => {
     if (!user || user.role !== 'teacher') return
     
     try {
-      const targetUser = users.find(u => u.id === userId)
+      const storedUsers = loadUsersFromStorage()
+      const targetUser = storedUsers.find(u => u.id === userId)
       if (!targetUser) return
       
       const newPoints = Math.max(0, targetUser.points + pointsChange)
-      await blink.db.users.update(userId, {
-        points: newPoints
-      })
+      const updatedUsers = storedUsers.map(u => 
+        u.id === userId 
+          ? { ...u, points: newPoints }
+          : u
+      )
+      
+      saveUsersToStorage(updatedUsers)
       
       toast.success(`${pointsChange > 0 ? 'Added' : 'Removed'} ${Math.abs(pointsChange)} points ${pointsChange > 0 ? 'to' : 'from'} ${targetUser.displayName}`)
       loadAllUsers()
@@ -130,9 +135,14 @@ function App() {
     if (!user) return
     
     try {
-      await blink.db.users.update(user.id, {
-        role: 'teacher'
-      })
+      const storedUsers = loadUsersFromStorage()
+      const updatedUsers = storedUsers.map(u => 
+        u.id === user.id 
+          ? { ...u, role: 'teacher' as const }
+          : u
+      )
+      
+      saveUsersToStorage(updatedUsers)
       setUser({ ...user, role: 'teacher' })
       toast.success('You are now a teacher!')
     } catch (error) {
@@ -177,7 +187,6 @@ function App() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-100 via-pink-50 to-cyan-100">
-      {/* Header */}
       <div className="bg-white/80 backdrop-blur-sm border-b border-purple-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
@@ -186,7 +195,7 @@ function App() {
                 <Users className="w-5 h-5 text-white" />
               </div>
               <div>
-                <h1 className="text-xl font-bold text-gray-900">{classSettings.className}</h1>
+                <h1 className="text-xl font-bold text-gray-900">{className}</h1>
                 <p className="text-sm text-gray-600">{users.length} students</p>
               </div>
             </div>
@@ -219,7 +228,6 @@ function App() {
         </div>
       </div>
 
-      {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <Tabs defaultValue="gallery" className="w-full">
           <TabsList className="grid w-full grid-cols-3 mb-8">
@@ -231,12 +239,10 @@ function App() {
               <Sparkles className="w-4 h-4" />
               <span>Customize Avatar</span>
             </TabsTrigger>
-            {user.role === 'teacher' && (
-              <TabsTrigger value="manage" className="flex items-center space-x-2">
-                <Settings className="w-4 h-4" />
-                <span>Manage Class</span>
-              </TabsTrigger>
-            )}
+            <TabsTrigger value="manage" className="flex items-center space-x-2">
+              <Settings className="w-4 h-4" />
+              <span>Manage Class</span>
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="gallery">
@@ -245,22 +251,31 @@ function App() {
 
           <TabsContent value="customize">
             <AvatarCustomizer
-              currentConfig={user.avatarConfig ? JSON.parse(user.avatarConfig) : null}
+              currentConfig={user.avatarConfig ? JSON.parse(user.avatarConfig) : {}}
               onSave={updateUserAvatar}
             />
           </TabsContent>
 
-          {user.role === 'teacher' && (
-            <TabsContent value="manage">
-              <PointsManager
-                users={users}
-                onUpdatePoints={updateUserPoints}
-              />
-            </TabsContent>
-          )}
+          <TabsContent value="manage">
+            {user.role === 'teacher' ? (
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <PointsManager users={users} onUpdatePoints={updateUserPoints} />
+                    <ClassSettings currentClassName={className} onSave={setClassName} />
+                </div>
+            ) : (
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Restricted Access</CardTitle>
+                        <CardDescription>This section is for teachers only.</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <p>Please ask your teacher for access to class management features.</p>
+                    </CardContent>
+                </Card>
+            )}
+          </TabsContent>
         </Tabs>
 
-        {/* Debug - Make teacher button */}
         {user.role === 'student' && (
           <div className="fixed bottom-4 right-4">
             <Dialog>

@@ -1,10 +1,9 @@
 import { useState } from 'react'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from './ui/card'
 import { Button } from './ui/button'
 import { Label } from './ui/label'
-import { Separator } from './ui/separator'
 import { Badge } from './ui/badge'
-import { Palette, Sparkles, Save } from 'lucide-react'
+import { Sparkles, Save } from 'lucide-react'
 
 interface AvatarConfig {
   hair: string

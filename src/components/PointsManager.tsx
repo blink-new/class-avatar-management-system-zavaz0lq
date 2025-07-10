@@ -3,9 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from './ui/card'
 import { Button } from './ui/button'
 import { Input } from './ui/input'
 import { Label } from './ui/label'
-import { Badge } from './ui/badge'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog'
-import { Plus, Minus, Star, Settings, Users } from 'lucide-react'
+import { Plus, Minus } from 'lucide-react'
 import { AvatarDisplay } from './AvatarCustomizer'
 
 interface User {
@@ -24,206 +22,101 @@ interface PointsManagerProps {
 
 export function PointsManager({ users, onUpdatePoints }: PointsManagerProps) {
   const [selectedUser, setSelectedUser] = useState<User | null>(null)
-  const [pointsAmount, setPointsAmount] = useState(10)
+  const [points, setPoints] = useState(10)
   const [reason, setReason] = useState('')
-  const [isDialogOpen, setIsDialogOpen] = useState(false)
 
-  const students = users.filter(user => user.role === 'student')
-
-  const handlePointsChange = (isAdd: boolean) => {
+  const handlePointUpdate = (multiplier: 1 | -1) => {
     if (!selectedUser) return
-    
-    const change = isAdd ? pointsAmount : -pointsAmount
-    onUpdatePoints(selectedUser.id, change, reason || (isAdd ? 'Good work!' : 'Needs improvement'))
-    
-    setIsDialogOpen(false)
-    setSelectedUser(null)
-    setPointsAmount(10)
+    onUpdatePoints(selectedUser.id, points * multiplier, reason)
     setReason('')
   }
 
-  const openDialog = (user: User) => {
-    setSelectedUser(user)
-    setIsDialogOpen(true)
-  }
+  const students = users.filter(u => u.role === 'student')
 
   return (
-    <div className="space-y-6">
-      <div className="text-center">
-        <h2 className="text-3xl font-bold text-gray-900 mb-2">Manage Student Points</h2>
-        <p className="text-gray-600">Reward students for their achievements or provide feedback</p>
-      </div>
-
-      {/* Quick Actions */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        <Card className="bg-green-50 border-green-200">
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center space-x-2 text-green-800">
-              <Plus className="w-5 h-5" />
-              <span>Quick Reward</span>
-            </CardTitle>
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+      {/* Student List */}
+      <div className="md:col-span-1">
+        <Card>
+          <CardHeader>
+            <CardTitle>Select a Student</CardTitle>
           </CardHeader>
-          <CardContent className="text-center">
-            <p className="text-sm text-green-700 mb-2">Give +10 points for good behavior</p>
-            <Badge variant="outline" className="bg-green-100 text-green-800">
-              Most Common
-            </Badge>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-blue-50 border-blue-200">
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center space-x-2 text-blue-800">
-              <Star className="w-5 h-5" />
-              <span>Custom Points</span>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="text-center">
-            <p className="text-sm text-blue-700 mb-2">Add or remove custom amounts</p>
-            <Badge variant="outline" className="bg-blue-100 text-blue-800">
-              Flexible
-            </Badge>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-purple-50 border-purple-200">
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center space-x-2 text-purple-800">
-              <Users className="w-5 h-5" />
-              <span>Class Overview</span>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="text-center">
-            <p className="text-sm text-purple-700 mb-2">{students.length} students total</p>
-            <Badge variant="outline" className="bg-purple-100 text-purple-800">
-              {students.reduce((sum, student) => sum + student.points, 0)} Total Points
-            </Badge>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Students List */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {students.map((student) => (
-          <Card key={student.id} className="hover:shadow-lg transition-shadow duration-300">
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-3">
-                  <AvatarDisplay 
-                    config={student.avatarConfig ? JSON.parse(student.avatarConfig) : null} 
-                    size="small"
-                  />
-                  <div>
-                    <h3 className="font-medium text-gray-900">
-                      {student.displayName || student.email.split('@')[0]}
-                    </h3>
-                    <p className="text-sm text-gray-500">{student.email}</p>
-                  </div>
-                </div>
-                <div className="flex items-center space-x-1">
-                  <Star className="w-4 h-4 text-yellow-500" />
-                  <span className="font-bold text-lg">{student.points}</span>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="flex space-x-2">
-                <Button
-                  size="sm"
-                  onClick={() => onUpdatePoints(student.id, 10, 'Quick reward')}
-                  className="flex-1 bg-green-600 hover:bg-green-700"
-                >
-                  <Plus className="w-4 h-4 mr-1" />
-                  +10
-                </Button>
-                <Button
-                  size="sm"
-                  onClick={() => onUpdatePoints(student.id, -5, 'Minor correction')}
-                  className="flex-1 bg-red-600 hover:bg-red-700"
-                >
-                  <Minus className="w-4 h-4 mr-1" />
-                  -5
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => openDialog(student)}
-                  className="flex-1"
-                >
-                  <Settings className="w-4 h-4 mr-1" />
-                  Custom
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-
-      {/* Custom Points Dialog */}
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>
-              Manage Points for {selectedUser?.displayName || selectedUser?.email.split('@')[0]}
-            </DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            {selectedUser && (
-              <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
-                <AvatarDisplay 
-                  config={selectedUser.avatarConfig ? JSON.parse(selectedUser.avatarConfig) : null} 
-                  size="small"
-                />
+          <CardContent className="space-y-2">
+            {students.map(student => (
+              <div
+                key={student.id}
+                onClick={() => setSelectedUser(student)}
+                className={`flex items-center space-x-3 p-2 rounded-lg cursor-pointer transition-colors ${
+                  selectedUser?.id === student.id
+                    ? 'bg-purple-100 ring-2 ring-purple-500'
+                    : 'hover:bg-gray-100'
+                }`}>
+                <AvatarDisplay config={student.avatarConfig ? JSON.parse(student.avatarConfig) : null} size="small" />
                 <div>
-                  <p className="font-medium">{selectedUser.displayName || selectedUser.email.split('@')[0]}</p>
-                  <p className="text-sm text-gray-600">Current points: {selectedUser.points}</p>
+                  <p className="font-semibold text-gray-900">{student.displayName}</p>
+                  <p className="text-sm text-gray-600">{student.points} points</p>
                 </div>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Points Control */}
+      <div className="md:col-span-2">
+        <Card>
+          <CardHeader>
+            <CardTitle>Manage Points</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {selectedUser ? (
+              <div className="text-center space-y-4">
+                <div className="inline-block">
+                  <AvatarDisplay config={selectedUser.avatarConfig ? JSON.parse(selectedUser.avatarConfig) : null} size="large" />
+                </div>
+                <h3 className="text-xl font-bold">{selectedUser.displayName}</h3>
+                
+                <div className="w-full max-w-sm mx-auto">
+                  <Label htmlFor="points" className="mb-2 block">Points to Add/Remove</Label>
+                  <Input
+                    id="points"
+                    type="number"
+                    value={points}
+                    onChange={(e) => setPoints(Math.max(1, parseInt(e.target.value, 10) || 1))}
+                    className="text-center text-lg"
+                  />
+                </div>
+
+                <div className="w-full max-w-sm mx-auto">
+                  <Label htmlFor="reason" className="mb-2 block">Reason (Optional)</Label>
+                  <Input
+                    id="reason"
+                    type="text"
+                    value={reason}
+                    onChange={(e) => setReason(e.target.value)}
+                    placeholder="e.g., Great participation!"
+                  />
+                </div>
+
+                <div className="flex justify-center space-x-4">
+                  <Button onClick={() => handlePointUpdate(1)} size="lg" className="bg-green-500 hover:bg-green-600">
+                    <Plus className="w-5 h-5 mr-2" />
+                    Add Points
+                  </Button>
+                  <Button onClick={() => handlePointUpdate(-1)} size="lg" variant="destructive">
+                    <Minus className="w-5 h-5 mr-2" />
+                    Remove Points
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="text-center py-12">
+                <p className="text-gray-500">Select a student from the list to manage their points.</p>
               </div>
             )}
-            
-            <div className="space-y-2">
-              <Label htmlFor="points-amount">Points Amount</Label>
-              <Input
-                id="points-amount"
-                type="number"
-                value={pointsAmount}
-                onChange={(e) => setPointsAmount(Number(e.target.value))}
-                placeholder="Enter points amount"
-                min="1"
-                max="100"
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="reason">Reason (Optional)</Label>
-              <Input
-                id="reason"
-                value={reason}
-                onChange={(e) => setReason(e.target.value)}
-                placeholder="e.g., Great participation, Excellent homework, etc."
-              />
-            </div>
-            
-            <div className="flex space-x-2">
-              <Button
-                onClick={() => handlePointsChange(true)}
-                className="flex-1 bg-green-600 hover:bg-green-700"
-              >
-                <Plus className="w-4 h-4 mr-2" />
-                Add Points
-              </Button>
-              <Button
-                onClick={() => handlePointsChange(false)}
-                variant="destructive"
-                className="flex-1"
-              >
-                <Minus className="w-4 h-4 mr-2" />
-                Remove Points
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   )
 }

@@ -1,4 +1,4 @@
-import { Card, CardContent, CardHeader, CardTitle } from './ui/card'
+import { Card, CardContent, CardHeader } from './ui/card'
 import { Badge } from './ui/badge'
 import { Star, Crown, Trophy, Medal, Award } from 'lucide-react'
 import { AvatarDisplay } from './AvatarCustomizer'
