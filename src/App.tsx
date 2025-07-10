@@ -1,155 +1,107 @@
-import { useState, useEffect } from 'react'
-import { blink } from './blink/client'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './components/ui/card'
-import { Button } from './components/ui/button'
-import { Badge } from './components/ui/badge'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from './components/ui/dialog'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from './components/ui/tabs'
-import { Users, Star, Settings, Crown, Sparkles } from 'lucide-react'
-import { AvatarCustomizer, AvatarConfig } from './components/AvatarCustomizer'
-import { ClassGallery } from './components/ClassGallery'
-import { PointsManager } from './components/PointsManager'
-import toast from 'react-hot-toast'
+import { useState, useEffect } from 'react';
+import { blink } from './blink/client';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './components/ui/card';
+import { Button } from './components/ui/button';
+import { Badge } from './components/ui/badge';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from './components/ui/dialog';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from './components/ui/tabs';
+import { Users, Star, Settings, Crown, Sparkles } from 'lucide-react';
+import { AvatarCustomizer, AvatarConfig } from './components/AvatarCustomizer';
+import { ClassGallery } from './components/ClassGallery';
+import { PointsManager } from './components/PointsManager';
+import { ClassSettings } from './components/ClassSettings';
+import toast from 'react-hot-toast';
 
 interface User {
-  id: string
-  email: string
-  displayName?: string
-  role: 'student' | 'teacher'
-  points: number
-  avatarConfig?: string
+  id: string;
+  email: string;
+  displayName?: string;
+  role: 'student' | 'teacher';
+  points: number;
+  avatarConfig?: string;
 }
 
-// Local storage helpers
-const STORAGE_KEY = 'class-avatar-users'
+const defaultAvatar: AvatarConfig = {
+  hair: 'short',
+  hairColor: '#8B4513',
+  eyes: 'normal',
+  eyeColor: '#4169E1',
+  skin: '#FDBCB4',
+  outfit: 'casual',
+  outfitColor: '#FF6B6B',
+  accessory: 'none',
+};
 
-function saveUsersToStorage(users: User[]) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(users))
-}
-
-function loadUsersFromStorage(): User[] {
-  const stored = localStorage.getItem(STORAGE_KEY)
-  return stored ? JSON.parse(stored) : []
-}
+const mockUsers: User[] = [
+  { id: '1', email: 'student1@example.com', displayName: 'Alice', role: 'student', points: 120, avatarConfig: JSON.stringify({ ...defaultAvatar, hair: 'long', outfitColor: '#4ECDC4' }) },
+  { id: '2', email: 'student2@example.com', displayName: 'Bob', role: 'student', points: 95, avatarConfig: JSON.stringify({ ...defaultAvatar, hair: 'buzz', skin: '#C68642' }) },
+  { id: '3', email: 'student3@example.com', displayName: 'Charlie', role: 'student', points: 150, avatarConfig: JSON.stringify({ ...defaultAvatar, accessory: 'glasses', hairColor: '#000000' }) },
+  { id: '4', email: 'student4@example.com', displayName: 'Diana', role: 'student', points: 80, avatarConfig: JSON.stringify({ ...defaultAvatar, hair: 'ponytail', eyeColor: '#228B22' }) },
+];
 
 function App() {
-  const [user, setUser] = useState<User | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [users, setUsers] = useState<User[]>(mockUsers)
-  const [className, setClassName] = useState('My Awesome Class')
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [users, setUsers] = useState<User[]>(mockUsers);
+  const [className, setClassName] = useState('My Awesome Class');
 
   useEffect(() => {
     const unsubscribe = blink.auth.onAuthStateChanged((state) => {
       if (state.user) {
-        initializeUser(state.user)
-      }
-      setLoading(state.isLoading)
-    })
-    return unsubscribe
-  }, [users])
-
-  const initializeUser = async (authUser: { id: string; email: string; displayName?: string }) => {
-    try {
-      // Load users from local storage
-      const storedUsers = loadUsersFromStorage()
-      
-      // Check if user exists in local storage
-      const existingUser = storedUsers.find(u => u.email === authUser.email)
-
-      if (existingUser) {
-        setUser(existingUser)
-      } else {
-        // Create new user profile
-        const newUser: User = {
-          id: authUser.id,
-          email: authUser.email,
-          displayName: authUser.displayName || authUser.email.split('@')[0],
-          role: 'student',
-          points: 0,
-          avatarConfig: JSON.stringify({
-            hair: 'short',
-            hairColor: '#8B4513',
-            eyes: 'normal',
-            eyeColor: '#4169E1',
-            skin: '#FDBCB4',
-            outfit: 'casual',
-            outfitColor: '#FF6B6B',
-            accessory: 'none'
-          })
+        const authUser = state.user;
+        // Try to find user in our mock data, or create a new one
+        const existingUser = users.find(u => u.email === authUser.email);
+        if (existingUser) {
+          setUser(existingUser);
+        } else {
+          const newUser: User = {
+            id: authUser.id,
+            email: authUser.email,
+            displayName: authUser.displayName || authUser.email.split('@')[0],
+            role: 'student',
+            points: 50,
+            avatarConfig: JSON.stringify(defaultAvatar),
+          };
+          const updatedUsers = [...users, newUser];
+          setUsers(updatedUsers);
+          setUser(newUser);
         }
-        
-        const updatedUsers = [...storedUsers, newUser]
-        saveUsersToStorage(updatedUsers)
-        setUser(newUser)
+      } else {
+        setUser(null);
       }
-      
-      // Load all users for gallery
-      loadAllUsers()
-      
-      toast.success('Welcome to the class!')
-    } catch (error) {
-      console.error('Error initializing user:', error)
-      toast.error('Failed to initialize user profile')
-    }
-  }
-
-  const loadAllUsers = () => {
-    const storedUsers = loadUsersFromStorage()
-    const sortedUsers = storedUsers.sort((a, b) => b.points - a.points)
-    setUsers(sortedUsers)
-  }
+      setLoading(state.isLoading);
+    });
+    return unsubscribe;
+  }, [users]); // Re-run if users array changes
 
   const updateUserAvatar = (avatarConfig: AvatarConfig) => {
-    if (!user) return
-    setUser({ ...user, avatarConfig: JSON.stringify(avatarConfig) })
-    toast.success('Avatar updated successfully!')
-    loadAllUsers()
-  }
+    if (!user) return;
+    const updatedUser = { ...user, avatarConfig: JSON.stringify(avatarConfig) };
+    setUser(updatedUser);
+    setUsers(users.map(u => (u.id === user.id ? updatedUser : u)));
+    toast.success('Avatar updated successfully!');
+  };
 
-  const updateUserPoints = async (userId: string, pointsChange: number) => {
-    if (!user || user.role !== 'teacher') return
-    
-    try {
-      const storedUsers = loadUsersFromStorage()
-      const targetUser = storedUsers.find(u => u.id === userId)
-      if (!targetUser) return
-      
-      const newPoints = Math.max(0, targetUser.points + pointsChange)
-      const updatedUsers = storedUsers.map(u => 
-        u.id === userId 
-          ? { ...u, points: newPoints }
-          : u
-      )
-      
-      saveUsersToStorage(updatedUsers)
-      
-      toast.success(`${pointsChange > 0 ? 'Added' : 'Removed'} ${Math.abs(pointsChange)} points ${pointsChange > 0 ? 'to' : 'from'} ${targetUser.displayName}`)
-      loadAllUsers()
-    } catch (error) {
-      console.error('Error updating points:', error)
-      toast.error('Failed to update points')
-    }
-  }
+  const updateUserPoints = (userId: string, pointsChange: number, reason: string) => {
+    if (!user || user.role !== 'teacher') return;
 
-  const makeTeacher = async () => {
-    if (!user) return
-    
-    try {
-      const storedUsers = loadUsersFromStorage()
-      const updatedUsers = storedUsers.map(u => 
-        u.id === user.id 
-          ? { ...u, role: 'teacher' as const }
-          : u
-      )
-      
-      saveUsersToStorage(updatedUsers)
-      setUser({ ...user, role: 'teacher' })
-      toast.success('You are now a teacher!')
-    } catch (error) {
-      console.error('Error making teacher:', error)
-      toast.error('Failed to update role')
-    }
-  }
+    setUsers(users.map(u => {
+      if (u.id === userId) {
+        const newPoints = Math.max(0, u.points + pointsChange);
+        toast.success(`${pointsChange > 0 ? 'Added' : 'Removed'} ${Math.abs(pointsChange)} points ${pointsChange > 0 ? 'to' : 'from'} ${u.displayName}${reason ? ` for ${reason}`: ''}.`);
+        return { ...u, points: newPoints };
+      }
+      return u;
+    }));
+  };
+
+  const makeTeacher = () => {
+    if (!user) return;
+    const updatedUser = { ...user, role: 'teacher' as const };
+    setUser(updatedUser);
+    setUsers(users.map(u => (u.id === user.id ? updatedUser : u)));
+    toast.success('You are now a teacher!');
+  };
 
   if (loading) {
     return (
@@ -159,7 +111,7 @@ function App() {
           <p className="text-gray-600">Loading your class...</p>
         </div>
       </div>
-    )
+    );
   }
 
   if (!user) {
@@ -182,12 +134,12 @@ function App() {
           </CardContent>
         </Card>
       </div>
-    )
+    );
   }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-100 via-pink-50 to-cyan-100">
-      <div className="bg-white/80 backdrop-blur-sm border-b border-purple-200">
+      <div className="bg-white/80 backdrop-blur-sm border-b border-purple-200 sticky top-0 z-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center space-x-3">
@@ -231,18 +183,9 @@ function App() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <Tabs defaultValue="gallery" className="w-full">
           <TabsList className="grid w-full grid-cols-3 mb-8">
-            <TabsTrigger value="gallery" className="flex items-center space-x-2">
-              <Users className="w-4 h-4" />
-              <span>Class Gallery</span>
-            </TabsTrigger>
-            <TabsTrigger value="customize" className="flex items-center space-x-2">
-              <Sparkles className="w-4 h-4" />
-              <span>Customize Avatar</span>
-            </TabsTrigger>
-            <TabsTrigger value="manage" className="flex items-center space-x-2">
-              <Settings className="w-4 h-4" />
-              <span>Manage Class</span>
-            </TabsTrigger>
+            <TabsTrigger value="gallery">Class Gallery</TabsTrigger>
+            <TabsTrigger value="customize">Customize Avatar</TabsTrigger>
+            <TabsTrigger value="manage">Manage Class</TabsTrigger>
           </TabsList>
 
           <TabsContent value="gallery">
@@ -251,7 +194,7 @@ function App() {
 
           <TabsContent value="customize">
             <AvatarCustomizer
-              currentConfig={user.avatarConfig ? JSON.parse(user.avatarConfig) : {}}
+              currentConfig={user.avatarConfig ? JSON.parse(user.avatarConfig) : defaultAvatar}
               onSave={updateUserAvatar}
             />
           </TabsContent>
@@ -259,7 +202,7 @@ function App() {
           <TabsContent value="manage">
             {user.role === 'teacher' ? (
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                    <PointsManager users={users} onUpdatePoints={updateUserPoints} />
+                    <PointsManager users={users} onUpdatePoints={updateUserPoints} currentUserRole={user.role} />
                     <ClassSettings currentClassName={className} onSave={setClassName} />
                 </div>
             ) : (
@@ -303,7 +246,7 @@ function App() {
         )}
       </div>
     </div>
-  )
+  );
 }
 
-export default App
+export default App;

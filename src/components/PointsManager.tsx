@@ -18,9 +18,10 @@ interface User {
 interface PointsManagerProps {
   users: User[]
   onUpdatePoints: (userId: string, pointsChange: number, reason: string) => void
+  currentUserRole: 'student' | 'teacher'
 }
 
-export function PointsManager({ users, onUpdatePoints }: PointsManagerProps) {
+export function PointsManager({ users, onUpdatePoints, currentUserRole }: PointsManagerProps) {
   const [selectedUser, setSelectedUser] = useState<User | null>(null)
   const [points, setPoints] = useState(10)
   const [reason, setReason] = useState('')
@@ -99,11 +100,11 @@ export function PointsManager({ users, onUpdatePoints }: PointsManagerProps) {
                 </div>
 
                 <div className="flex justify-center space-x-4">
-                  <Button onClick={() => handlePointUpdate(1)} size="lg" className="bg-green-500 hover:bg-green-600">
+                  <Button onClick={() => handlePointUpdate(1)} size="lg" className="bg-green-500 hover:bg-green-600" disabled={currentUserRole !== 'teacher'}>
                     <Plus className="w-5 h-5 mr-2" />
                     Add Points
                   </Button>
-                  <Button onClick={() => handlePointUpdate(-1)} size="lg" variant="destructive">
+                  <Button onClick={() => handlePointUpdate(-1)} size="lg" variant="destructive" disabled={currentUserRole !== 'teacher'}>
                     <Minus className="w-5 h-5 mr-2" />
                     Remove Points
                   </Button>

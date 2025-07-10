@@ -1,9 +1,21 @@
-import { Card, CardContent, CardHeader, CardTitle } from './ui/card'
-import { Button } from './ui/button'
-import { Input } from './ui/input'
-import { Label } from './ui/label'
+import { useState } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
+import { Button } from './ui/button';
+import { Input } from './ui/input';
+import { Label } from './ui/label';
 
-export function ClassSettings() {
+interface ClassSettingsProps {
+  currentClassName: string;
+  onSave: (newName: string) => void;
+}
+
+export function ClassSettings({ currentClassName, onSave }: ClassSettingsProps) {
+  const [className, setClassName] = useState(currentClassName);
+
+  const handleSave = () => {
+    onSave(className);
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -12,10 +24,14 @@ export function ClassSettings() {
       <CardContent className="space-y-4">
         <div>
           <Label htmlFor="className">Class Name</Label>
-          <Input id="className" defaultValue="My Awesome Class" />
+          <Input
+            id="className"
+            value={className}
+            onChange={(e) => setClassName(e.target.value)}
+          />
         </div>
-        <Button>Save Settings</Button>
+        <Button onClick={handleSave}>Save Settings</Button>
       </CardContent>
     </Card>
-  )
+  );
 }
