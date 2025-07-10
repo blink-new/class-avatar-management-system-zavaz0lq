@@ -11,6 +11,7 @@ import { ClassGallery } from './components/ClassGallery';
 import { PointsManager } from './components/PointsManager';
 import { ClassSettings } from './components/ClassSettings';
 import toast from 'react-hot-toast';
+import { loadPointTransactions, savePointTransactions, PointTransaction } from './pointHistory';
 
 interface User {
   id: string;
