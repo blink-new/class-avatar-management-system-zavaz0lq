@@ -42,14 +42,29 @@ const mockUsers: User[] = [
 function App() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  const [users, setUsers] = useState<User[]>(mockUsers);
+  const [users, setUsers] = useState<User[]>(() => {
+    try {
+      const data = localStorage.getItem('users');
+      return data ? JSON.parse(data) : mockUsers;
+    } catch {
+      return mockUsers;
+    }
+  });
+  const [pointTransactions, setPointTransactions] = useState<PointTransaction[]>(() => loadPointTransactions());
   const [className, setClassName] = useState('My Awesome Class');
+
+  // Save users and transactions to localStorage on change
+  useEffect(() => {
+    localStorage.setItem('users', JSON.stringify(users));
+  }, [users]);
+  useEffect(() => {
+    savePointTransactions(pointTransactions);
+  }, [pointTransactions]);
 
   useEffect(() => {
     const unsubscribe = blink.auth.onAuthStateChanged((state) => {
       if (state.user) {
         const authUser = state.user;
-        // Try to find user in our mock data, or create a new one
         const existingUser = users.find(u => u.email === authUser.email);
         if (existingUser) {
           setUser(existingUser);
@@ -59,7 +74,7 @@ function App() {
             email: authUser.email,
             displayName: authUser.displayName || authUser.email.split('@')[0],
             role: 'student',
-            points: 50,
+            points: 0,
             avatarConfig: JSON.stringify(defaultAvatar),
           };
           const updatedUsers = [...users, newUser];
@@ -72,7 +87,7 @@ function App() {
       setLoading(state.isLoading);
     });
     return unsubscribe;
-  }, [users]); // Re-run if users array changes
+  }, [users]);
 
   const updateUserAvatar = (avatarConfig: AvatarConfig) => {
     if (!user) return;
@@ -84,10 +99,19 @@ function App() {
 
   const updateUserPoints = (userId: string, pointsChange: number, reason: string) => {
     if (!user || user.role !== 'teacher') return;
-
     setUsers(users.map(u => {
       if (u.id === userId) {
         const newPoints = Math.max(0, u.points + pointsChange);
+        // Log transaction
+        const transaction: PointTransaction = {
+          id: `${Date.now()}-${Math.random().toString(36).slice(2,8)}`,
+          userId,
+          teacherId: user.id,
+          pointsChange,
+          reason,
+          createdAt: new Date().toISOString(),
+        };
+        setPointTransactions(prev => [transaction, ...prev]);
         toast.success(`${pointsChange > 0 ? 'Added' : 'Removed'} ${Math.abs(pointsChange)} points ${pointsChange > 0 ? 'to' : 'from'} ${u.displayName}${reason ? ` for ${reason}`: ''}.`);
         return { ...u, points: newPoints };
       }
@@ -190,6 +214,33 @@ function App() {
 
           <TabsContent value="gallery">
             <ClassGallery users={users} currentUser={user} />
+            {/* Student's point history */}
+            {user.role === 'student' && (
+              <div className="mt-8 max-w-xl mx-auto">
+                <h3 className="text-xl font-bold mb-2 text-center">Your Point History</h3>
+                <div className="bg-white rounded-lg shadow p-4">
+                  {pointTransactions.filter(t => t.userId === user.id).length === 0 ? (
+                    <p className="text-gray-500 text-center">No points awarded yet.</p>
+                  ) : (
+                    <ul className="divide-y divide-gray-200">
+                      {pointTransactions.filter(t => t.userId === user.id).map(t => (
+                        <li key={t.id} className="py-2 flex items-center justify-between">
+                          <span className={t.pointsChange > 0 ? 'text-green-600' : 'text-red-600'}>
+                            {t.pointsChange > 0 ? '+' : ''}{t.pointsChange} pts
+                          </span>
+                          <span className="text-gray-700 text-sm">
+                            {t.reason ? t.reason : (t.pointsChange > 0 ? 'Awarded' : 'Deducted')}
+                          </span>
+                          <span className="text-xs text-gray-400">
+                            {new Date(t.createdAt).toLocaleString()}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              </div>
+            )}
           </TabsContent>
 
           <TabsContent value="customize">
