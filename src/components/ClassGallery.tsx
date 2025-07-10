@@ -118,7 +118,7 @@ export function ClassGallery({ users, currentUser, classStats }: ClassGalleryPro
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
         {sortedUsers.map((user, index) => (
           <Card 
-            key={user.id} 
+            key={user.id + '-' + index} 
             className={`transition-all duration-300 hover:shadow-lg ${
               user.id === currentUser.id ? 'ring-2 ring-purple-500 bg-purple-50' : ''
             }`}
