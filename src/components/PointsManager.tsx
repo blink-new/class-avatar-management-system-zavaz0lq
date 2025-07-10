@@ -19,9 +19,17 @@ interface PointsManagerProps {
   users: User[]
   onUpdatePoints: (userId: string, pointsChange: number, reason: string) => void
   currentUserRole: 'student' | 'teacher'
+  pointTransactions?: Array<{
+    id: string
+    userId: string
+    teacherId: string
+    pointsChange: number
+    reason?: string
+    createdAt: string
+  }>
 }
 
-export function PointsManager({ users, onUpdatePoints, currentUserRole }: PointsManagerProps) {
+export function PointsManager({ users, onUpdatePoints, currentUserRole, pointTransactions = [] }: PointsManagerProps) {
   const [selectedUser, setSelectedUser] = useState<User | null>(null)
   const [points, setPoints] = useState(10)
   const [reason, setReason] = useState('')

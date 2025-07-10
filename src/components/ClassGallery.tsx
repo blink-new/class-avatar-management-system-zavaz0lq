@@ -15,9 +15,16 @@ interface User {
 interface ClassGalleryProps {
   users: User[]
   currentUser: User
+  classStats?: {
+    totalStudents: number
+    totalPoints: number
+    averagePoints: number
+    topStudent: User | null
+    recentActivity: any[]
+  }
 }
 
-export function ClassGallery({ users, currentUser }: ClassGalleryProps) {
+export function ClassGallery({ users, currentUser, classStats }: ClassGalleryProps) {
   const sortedUsers = [...users].sort((a, b) => b.points - a.points)
   
   const getRankIcon = (index: number) => {
@@ -189,6 +196,31 @@ export function ClassGallery({ users, currentUser }: ClassGalleryProps) {
             <div className="text-sm text-gray-600">Average Points</div>
           </div>
         </div>
+        {classStats && (
+          <div className="mt-4">
+            <h3 className="text-lg font-bold text-gray-900 mb-2">Class Stats</h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
+              <div>
+                <div className="text-2xl font-bold text-purple-600">{classStats.totalStudents}</div>
+                <div className="text-sm text-gray-600">Total Students</div>
+              </div>
+              <div>
+                <div className="text-2xl font-bold text-yellow-600">{classStats.totalPoints}</div>
+                <div className="text-sm text-gray-600">Total Points</div>
+              </div>
+              <div>
+                <div className="text-2xl font-bold text-green-600">{classStats.averagePoints}</div>
+                <div className="text-sm text-gray-600">Average Points</div>
+              </div>
+              {classStats.topStudent && (
+                <div>
+                  <div className="text-2xl font-bold text-red-600">{classStats.topStudent.points}</div>
+                  <div className="text-sm text-gray-600">{classStats.topStudent.displayName}</div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )
